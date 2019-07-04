@@ -969,6 +969,10 @@ template<typename T>
 struct functor_traits<std::not_equal_to<T> >
 { enum { Cost = 1, PacketAccess = false }; };
 
+// NHL_BEGIN | DIVERGENCE | gilbert.wong@ea.com | Jan 08, 2019 | VS 2017 upgrade - std::binder* removed in c++17
+#if !defined(EA_COMPILER_CPP14_ENABLED)
+// std::binder* are deprecated since c++11 and will be removed in c++17
+// NHL_END
 template<typename T>
 struct functor_traits<std::binder2nd<T> >
 { enum { Cost = functor_traits<T>::Cost, PacketAccess = false }; };
@@ -976,6 +980,9 @@ struct functor_traits<std::binder2nd<T> >
 template<typename T>
 struct functor_traits<std::binder1st<T> >
 { enum { Cost = functor_traits<T>::Cost, PacketAccess = false }; };
+// NHL_BEGIN | DIVERGENCE | gilbert.wong@ea.com | Jan 08, 2019 | VS 2017 upgrade - std::binder* removed in c++17
+#endif
+// NHL_END
 
 template<typename T>
 struct functor_traits<std::unary_negate<T> >

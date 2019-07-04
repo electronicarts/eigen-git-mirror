@@ -82,6 +82,35 @@ namespace Eigen {
 
 namespace internal {
 
+// NHL_BEGIN | DIVERGENCE | gilbert.wong@ea.com | March 12, 2019 | adding memory allocation callbacks for tracking
+#if EIGEN_USE_CUSTOM_ALLOC
+
+// User provides aligned_malloc
+typedef void *(CustomAllocT)(size_t size);
+
+// User provides aligned_free
+typedef void (CustomFreeT)(void* ptr);
+
+// User provides aligned_realloc
+typedef void *(CustomReallocT)(void* ptr, size_t size);
+
+static CustomAllocT  *customAllocFunc = NULL;
+static CustomFreeT *customFreeFunc = NULL;
+static CustomReallocT *customReallocFunc = NULL;
+
+inline void CustomMemFuncSet(CustomAllocT *pMemAlloc, CustomFreeT *pMemFree, CustomReallocT *pMemRealloc)
+{
+    if (customAllocFunc == nullptr)
+        { customAllocFunc = pMemAlloc; }
+    if (customFreeFunc == nullptr)
+        { customFreeFunc = pMemFree; }
+    if (customReallocFunc == nullptr)
+        { customReallocFunc = pMemRealloc;}
+}
+
+#endif
+// NHL_END
+
 inline void throw_std_bad_alloc()
 {
   #ifdef EIGEN_EXCEPTIONS
@@ -214,7 +243,19 @@ inline void* aligned_malloc(size_t size)
   check_that_malloc_is_allowed();
 
   void *result;
-  #if !EIGEN_ALIGN
+
+// NHL_BEGIN | DIVERGENCE | gilbert.wong@ea.com | March 12, 2019 | adding memory allocation callbacks for tracking
+#if EIGEN_USE_CUSTOM_ALLOC
+    if (customAllocFunc != nullptr)
+    {
+        result = customAllocFunc(size);
+    }
+    else
+    {
+        result = std::malloc(size);
+    }
+#elif !EIGEN_ALIGN
+// NHL_END
     result = std::malloc(size);
   #elif EIGEN_MALLOC_ALREADY_ALIGNED
     result = std::malloc(size);
@@ -237,7 +278,18 @@ inline void* aligned_malloc(size_t size)
 /** \internal Frees memory allocated with aligned_malloc. */
 inline void aligned_free(void *ptr)
 {
-  #if !EIGEN_ALIGN
+// NHL_BEGIN | DIVERGENCE | gilbert.wong@ea.com | March 12, 2019 | adding memory allocation callbacks for tracking
+#if EIGEN_USE_CUSTOM_ALLOC        // Gil - adding allocation callbacks
+    if (customFreeFunc != nullptr)
+    {
+        customFreeFunc(ptr);
+    }
+    else
+    {
+        std::free(ptr);
+    }
+#elif !EIGEN_ALIGN
+// NHL_END
     std::free(ptr);
   #elif EIGEN_MALLOC_ALREADY_ALIGNED
     std::free(ptr);
@@ -262,7 +314,20 @@ inline void* aligned_realloc(void *ptr, size_t new_size, size_t old_size)
   EIGEN_UNUSED_VARIABLE(old_size);
 
   void *result;
-#if !EIGEN_ALIGN
+  
+// NHL_BEGIN | DIVERGENCE | gilbert.wong@ea.com | March 12, 2019 | adding memory allocation callbacks for tracking
+#if EIGEN_USE_CUSTOM_ALLOC
+  if (customReallocFunc != nullptr)
+  {
+      result = customReallocFunc(ptr, new_size);
+  }
+  else
+  {
+      result = std::realloc(ptr, new_size);
+  }
+  CustomRealloc(ptr, new_size);
+#elif !EIGEN_ALIGN
+// NHL_END
   result = std::realloc(ptr,new_size);
 #elif EIGEN_MALLOC_ALREADY_ALIGNED
   result = std::realloc(ptr,new_size);
